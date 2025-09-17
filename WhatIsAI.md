@@ -30,3 +30,9 @@ Microsoft offers many cloud services for building, running, and managing AI solu
 
 For a full list of Azure AI Services, you can visit the [Azure AI documentation](https://learn.microsoft.com/en-us/azure/cognitive-services/). 
 
+## Ways to Utilize Azure AI Services
++ You will need to create Azure AI resources in a subscription and implement code in client applications to consume them **OR**
++ Some Azure AI services include a GUI that you can use to configure and test your resources. To see my walkthroughs of some of these GUI based services, check out my other repo [here](https://github.com/apsessoms/AzureAI). I explored text analytics which includes features like sentiment analysis, key phrase extraction, and language detection. I also walked through AI Vision which is capable of detecting objects, faces, and text in images. 
+
+## Up Next: Responsible AI
+In the next module, we will explore the principles of responsible AI and how to implement them in your AI solutions. Responsible AI ensures that AI systems are designed and deployed in a manner that is ethical, transparent, and respects user privacy. [Click here to continue to the next module.](AI-100/ResponsibleAI.md)
