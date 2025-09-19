@@ -1,4 +1,4 @@
-# AI-100 Microsoft Azure AI and Machine Learning Certification
+# AI-102 Developing Solutions for Microsoft Azure AI and Machine Learning
 
 This repository contains study materials and notes for the Microsoft AI-100 certification.
 
