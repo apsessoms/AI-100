@@ -105,6 +105,8 @@ To compare the two models on their math capabilities, you can ask both models th
 When I ran it, you can see that with phi-4-mini-instruct, it got the answer wrong. But with gpt-4o, it got the answer correct.
 ![Math Comparison](https://i.imgur.com/om5N0zx.png)
 
+You have successfully deployed two different models and compared their responses to the same prompts.
+
 ## References
 
 - [Azure OpenAI Service Documentation](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/)
