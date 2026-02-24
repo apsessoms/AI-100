@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 env:
-  LOCATION: eastus
+  LOCATION: eastus2
   RG_NAME: rg-github-azure-oidc
   PLAN_NAME: asp-ai100-oidc-demo
   APP_NAME: ai100-oidc-${{ github.run_id }}
