@@ -1,0 +1,2 @@
+flask=3.0.3 # Flask is the Python web framework that creates web server, handles http requests, define routes like / and /healtz, and returns JSON responses.
+gunicorn=22.0.0 # Gunicorn is a Python WSGI HTTP Server for UNIX. It's a pre-fork worker model, which means it forks multiple worker processes to handle requests.
