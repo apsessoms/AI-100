@@ -1,0 +1,180 @@
+name: Deploy WebApp + Key Vault + (Optional) Azure OpenAI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  LOCATION: eastus
+  RG_NAME: rg-ai100-oidc-demo
+  PLAN_NAME: asp-ai100-oidc-demo
+  APP_NAME: ai100-oidc-${{ github.run_id }}
+  KV_NAME: kvai100${{ github.run_id }}
+  OPENAI_NAME: aoai100${{ github.run_id }}
+  OPENAI_SECRET_NAME: OpenAIApiKey
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create Resource Group
+        run: |
+          az group create --name "$RG_NAME" --location "$LOCATION" -o table
+
+      - name: Create Key Vault (RBAC) + Secret
+        run: |
+          az keyvault create \
+            --name "$KV_NAME" \
+            --resource-group "$RG_NAME" \
+            --location "$LOCATION" \
+            --enable-rbac-authorization true \
+            -o table
+
+          az keyvault secret set \
+            --vault-name "$KV_NAME" \
+            --name "$OPENAI_SECRET_NAME" \
+            --value "REPLACE_ME_WITH_REAL_KEY" \
+            -o table
+
+      - name: Create App Service Plan + Linux Web App
+        run: |
+          az appservice plan create \
+            --name "$PLAN_NAME" \
+            --resource-group "$RG_NAME" \
+            --location "$LOCATION" \
+            --sku B1 \
+            --is-linux \
+            -o table
+
+          az webapp create \
+            --name "$APP_NAME" \
+            --resource-group "$RG_NAME" \
+            --plan "$PLAN_NAME" \
+            --runtime "PYTHON:3.11" \
+            -o table
+
+          az webapp identity assign \
+            --name "$APP_NAME" \
+            --resource-group "$RG_NAME" \
+            -o json
+
+      - name: Grant Web App access to Key Vault (RBAC)
+        run: |
+          PRINCIPAL_ID=$(az webapp identity show \
+            --name "$APP_NAME" \
+            --resource-group "$RG_NAME" \
+            --query principalId -o tsv)
+
+          KV_SCOPE=$(az keyvault show \
+            --name "$KV_NAME" \
+            --query id -o tsv)
+
+          az role assignment create \
+            --assignee-object-id "$PRINCIPAL_ID" \
+            --assignee-principal-type ServicePrincipal \
+            --role "Key Vault Secrets User" \
+            --scope "$KV_SCOPE" \
+            -o table
+
+      - name: Configure App Settings (Key Vault reference)
+        run: |
+          SECRET_ID=$(az keyvault secret show \
+            --vault-name "$KV_NAME" \
+            --name "$OPENAI_SECRET_NAME" \
+            --query id -o tsv)
+
+          az webapp config appsettings set \
+            --name "$APP_NAME" \
+            --resource-group "$RG_NAME" \
+            --settings \
+              OPENAI_API_KEY="@Microsoft.KeyVault(SecretUri=$SECRET_ID)" \
+              AZURE_OPENAI_ENDPOINT="https://example.openai.azure.com/" \
+              AZURE_OPENAI_DEPLOYMENT="gpt-4o-mini" \
+            -o table
+
+      - name: (Optional) Create Azure OpenAI resource (best-effort)
+        continue-on-error: true
+        run: |
+          az cognitiveservices account create \
+            --name "$OPENAI_NAME" \
+            --resource-group "$RG_NAME" \
+            --location "$LOCATION" \
+            --kind OpenAI \
+            --sku S0 \
+            --yes \
+            -o table
+
+          ENDPOINT=$(az cognitiveservices account show \
+            --name "$OPENAI_NAME" \
+            --resource-group "$RG_NAME" \
+            --query properties.endpoint -o tsv)
+
+          az webapp config appsettings set \
+            --name "$APP_NAME" \
+            --resource-group "$RG_NAME" \
+            --settings AZURE_OPENAI_ENDPOINT="$ENDPOINT" \
+            -o table
+
+      - name: Package app
+        run: |
+          cd app
+          zip -r ../app.zip .
+          cd ..
+          ls -lh app.zip
+
+      - name: Deploy app (Zip Deploy) + Startup
+        run: |
+          az webapp deployment source config-zip \
+            --name "$APP_NAME" \
+            --resource-group "$RG_NAME" \
+            --src app.zip \
+            -o table
+
+          STARTUP_CMD=$(cat app/startup.txt)
+
+          az webapp config set \
+            --name "$APP_NAME" \
+            --resource-group "$RG_NAME" \
+            --startup-file "$STARTUP_CMD" \
+            -o table
+
+      - name: Enable logging + test endpoints
+        run: |
+          az webapp log config \
+            --name "$APP_NAME" \
+            --resource-group "$RG_NAME" \
+            --application-logging filesystem \
+            --level information \
+            --web-server-logging filesystem \
+            -o table
+
+          echo "APP URL: https://$APP_NAME.azurewebsites.net"
+          echo "HEALTH CHECK:"
+          curl -fsS "https://$APP_NAME.azurewebsites.net/healthz" || true
+          echo "ROOT:"
+          curl -fsS "https://$APP_NAME.azurewebsites.net/" || true
+
+      - name: Output key resource proofs (for interview)
+        run: |
+          echo "=== Resource Group ==="
+          az group show --name "$RG_NAME" -o jsonc
+
+          echo "=== Key Vault ==="
+          az keyvault show --name "$KV_NAME" -g "$RG_NAME" -o jsonc
+
+          echo "=== Web App ==="
+          az webapp show --name "$APP_NAME" -g "$RG_NAME" -o jsonc
