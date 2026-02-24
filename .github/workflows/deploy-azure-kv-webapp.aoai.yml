@@ -77,7 +77,7 @@ jobs:
             --name "test-plan-${{ github.run_id }}" \
             --resource-group "$RG_NAME" \
             --location "$LOCATION" \
-            --sku F1 \
+            --sku B1 \
             --is-linux \
             -o table
      
