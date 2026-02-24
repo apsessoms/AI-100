@@ -9,7 +9,7 @@ permissions:
 
 env:
   LOCATION: eastus
-  RG_NAME: rg-ai100-oidc-demo
+  RG_NAME: rg-github-azure-oidc
   PLAN_NAME: asp-ai100-oidc-demo
   APP_NAME: ai100-oidc-${{ github.run_id }}
   KV_NAME: kvai100${{ github.run_id }}
